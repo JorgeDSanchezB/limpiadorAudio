@@ -1,2 +1,25 @@
+# Herramientas y entornos
 skills/
 node_modules/
+.venv/
+__pycache__/
+*.pyc
+
+# Secretos y configuración local
+.env
+.env.*
+!.env.example
+
+# Artefactos de build (se regeneran al compilar)
+audio-platform/frontend/dist/
+audio-platform/frontend/src-tauri/target/
+audio-platform/frontend/src-tauri/gen/
+audio-platform/backend/build/
+audio-platform/backend/dist/
+
+# Instaladores y ejecutables empaquetados (se generan con audio-backend.spec y tauri build)
+Limpiador de audio_*.exe
+audio-platform/frontend/src-tauri/binaries/*.exe
+
+# Medios de prueba locales
+pruebas/

@@ -1,41 +1,56 @@
 import { create } from 'zustand';
 import { apiClient } from '../api/client';
 
-export const useAudioStore = create((set, get) => ({
+export const useAudioStore = create((set) => ({
   files: [],
-  nextCursor: null,
   isLoading: false,
   isUploading: false,
-
-  fetchFiles: async (limit = 10) => {
-    set({ isLoading: true });
+  error: null,
+  fetchFiles: async () => {
+    set({ isLoading: true, error: null });
     try {
-      const cursor = get().nextCursor;
-      const res = await apiClient.get('/audio/files', { params: { limit, cursor } });
-      set({
-        files: [...get().files, ...res.data.items],
-        nextCursor: res.data.next_cursor,
-      });
-    } catch (e) {
-      console.error(e);
+      const res = await apiClient.get('/audio/files');
+      set({ files: res.data });
+    } catch {
+      set({ error: 'No se pudo conectar con el servicio local. Abre la aplicación de escritorio de nuevo.' });
     } finally {
       set({ isLoading: false });
     }
   },
-
-  uploadFile: async (file) => {
-    set({ isUploading: true });
+  uploadFile: async (file, onProgress) => {
+    set({ isUploading: true, error: null });
     try {
       const formData = new FormData();
       formData.append('file', file);
-      return await apiClient.post('/audio/process', formData, {
+      const response = await apiClient.post('/audio/process', formData, {
         headers: { 'Content-Type': 'multipart/form-data' },
+        onUploadProgress: (event) => {
+          if (event.total) onProgress?.(Math.round((event.loaded / event.total) * 70));
+        },
       });
-    } catch (e) {
-      console.error(e);
-      throw e;
+      set((state) => ({ files: [response.data, ...state.files] }));
+      return response.data;
+    } catch (error) {
+      set({ error: error.response?.data?.detail || 'No se pudo procesar el audio.' });
+      throw error;
     } finally {
       set({ isUploading: false });
+    }
+  },
+  deleteFile: async (jobId) => {
+    try {
+      await apiClient.delete(`/audio/files/${jobId}`);
+      set((state) => ({ files: state.files.filter((f) => f.id !== jobId) }));
+    } catch (error) {
+      set({ error: error.response?.data?.detail || 'No se pudo borrar el audio.' });
+    }
+  },
+  clearFiles: async () => {
+    try {
+      await apiClient.delete('/audio/files');
+      set({ files: [] });
+    } catch (error) {
+      set({ error: error.response?.data?.detail || 'No se pudo vaciar el historial.' });
     }
   },
 }));
